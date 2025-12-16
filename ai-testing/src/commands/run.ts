@@ -10,7 +10,7 @@ import { isDefined } from 'class-validator';
 import { progressBar } from '../modules/progress-bar';
 import { proxyConsole, restoreConsole } from '../modules/console-proxy';
 import { LangfuseClient } from '@langfuse/client';
-import { RunTracer } from '@fb/langfuse';
+import { RunTracer } from '@dl-tech/langfuse';
 
 interface Args extends Options {
   file_name: string;
