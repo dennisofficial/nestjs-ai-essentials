@@ -1,0 +1,85 @@
+{
+  "name": "@dl-tech/ai-testing",
+  "version": "1.0.0",
+  "description": "AI Testing Framework for LangChain applications",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./src/types/index.ts",
+  "bin": {
+    "ai-testing": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./src/types/index.ts",
+        "default": "./dist/types/index.mjs"
+      },
+      "require": {
+        "types": "./src/types/index.ts",
+        "default": "./dist/types/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=1.0.0",
+    "@langfuse/client": ">=4.0.0",
+    "@langfuse/langchain": ">=4.0.0",
+    "@langfuse/otel": ">=4.0.0",
+    "@langfuse/tracing": ">=4.0.0",
+    "@opentelemetry/sdk-node": ">=0.50.0",
+    "class-validator": ">=0.14.0",
+    "langchain": ">=0.3.0",
+    "reflect-metadata": ">=0.1.0",
+    "typescript": ">=5.0.0"
+  },
+  "dependencies": {
+    "@dl-tech/langfuse": "file:../langfuse",
+    "async-sema": "^3.1.1",
+    "chalk": "^4.1.2",
+    "cli-progress": "^3.12.0",
+    "dotenv": "^17.2.3",
+    "fs-extra": "^11.2.0",
+    "glob": "^11.1.0",
+    "pretty-ms": "^7.0.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "tsyringe": "^4.8.0",
+    "vm": "^0.1.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@langchain/core": "^1.1.2",
+    "@langfuse/client": "^4.4.9",
+    "@langfuse/langchain": "^4.4.9",
+    "@langfuse/otel": "^4.4.9",
+    "@langfuse/tracing": "^4.4.9",
+    "@opentelemetry/sdk-node": "^0.208.0",
+    "@types/cli-progress": "^3.11.5",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.19.0",
+    "@types/yargs": "^17.0.32",
+    "class-validator": "^0.14.3",
+    "langchain": "^1.1.3",
+    "reflect-metadata": "^0.2.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3"
+  }
+}

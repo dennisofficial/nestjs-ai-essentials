@@ -1,0 +1,69 @@
+{
+  "name": "@dl-tech/langfuse",
+  "version": "1.0.0",
+  "description": "Langfuse integration for NestJS",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./instruments": {
+      "import": {
+        "types": "./src/langfuse.instruments.ts",
+        "default": "./dist/instruments.mjs"
+      },
+      "require": {
+        "types": "./src/langfuse.instruments.ts",
+        "default": "./dist/instruments.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "peerDependencies": {
+    "@langchain/core": ">=1.0.0",
+    "@langfuse/client": ">=4.0.0",
+    "@langfuse/core": ">=4.0.0",
+    "@langfuse/otel": ">=4.0.0",
+    "@langfuse/tracing": ">=4.0.0",
+    "@nestjs/common": ">=10.0.0",
+    "@nestjs/core": ">=10.0.0",
+    "@opentelemetry/api": ">=1.0.0",
+    "@opentelemetry/sdk-node": ">=0.50.0",
+    "class-validator": ">=0.14.0",
+    "express": ">=4.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@langchain/core": "^1.1.2",
+    "@langfuse/client": "^4.4.9",
+    "@langfuse/core": "^4.4.9",
+    "@langfuse/otel": "^4.4.9",
+    "@langfuse/tracing": "^4.4.9",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
+    "@types/express": "^5.0.3",
+    "class-validator": "^0.14.3",
+    "express": "^5.1.0",
+    "rxjs": "^7.8.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3"
+  }
+}
