@@ -41,8 +41,8 @@
     "@langfuse/core": ">=4.0.0",
     "@langfuse/otel": ">=4.0.0",
     "@langfuse/tracing": ">=4.0.0",
-    "@nestjs/common": ">=10.0.0",
-    "@nestjs/core": ">=10.0.0",
+    "@nestjs/common": ">=11.0.0",
+    "@nestjs/core": ">=11.0.0",
     "@opentelemetry/api": ">=1.0.0",
     "@opentelemetry/sdk-node": ">=0.50.0",
     "class-validator": ">=0.14.0",
@@ -50,19 +50,7 @@
     "rxjs": ">=7.0.0"
   },
   "devDependencies": {
-    "@langchain/core": "^1.1.2",
-    "@langfuse/client": "^4.4.9",
-    "@langfuse/core": "^4.4.9",
-    "@langfuse/otel": "^4.4.9",
-    "@langfuse/tracing": "^4.4.9",
-    "@nestjs/common": "^11.1.6",
-    "@nestjs/core": "^11.1.6",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/sdk-node": "^0.208.0",
     "@types/express": "^5.0.3",
-    "class-validator": "^0.14.3",
-    "express": "^5.1.0",
-    "rxjs": "^7.8.2",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3"
   }
