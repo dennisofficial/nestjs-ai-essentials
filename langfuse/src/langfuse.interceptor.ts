@@ -59,30 +59,33 @@ class LangfuseInterceptor implements NestInterceptor {
   private createObserver(context: ExecutionContext, request: Request): LangfuseSpan {
     // Initialize config
     const { name, ...options } = this.reflect.get<IOptions>(TRACER_OPTIONS, context.getHandler());
-    const observation = RunTracer.traceAsync({ name, ...options });
-
     const user = (request as any)._user;
-
-    observation.updateTrace({
-      metadata: {
-        request: {
-          hostname: request.hostname,
-          ip: request.ip,
-        },
-        headers: request.headers,
-        controller: {
-          class: context.getClass().name,
-          handler: context.getHandler().name,
-        },
+    const traceMetadata = {
+      request: {
+        hostname: request.hostname,
+        ip: request.ip,
       },
-      userId: user.uid,
-      name: name,
+      headers: request.headers,
+      controller: {
+        class: context.getClass().name,
+        handler: context.getHandler().name,
+      },
+    };
+    const observation = RunTracer.traceAsync({
+      name,
+      ...options,
+      userId: user?.uid,
+      tags: [request.method, request.path],
+      traceMetadata,
+    });
+
+    observation.update({
+      metadata: traceMetadata,
       input: {
         body: request.body,
         query: request.query,
         params: request.params,
       },
-      tags: [request.method, request.path],
     });
 
     return observation;

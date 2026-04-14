@@ -83,12 +83,5 @@ export const cleanStackTrace = (stack: string | undefined): string | undefined =
     })
     .filter((frame) => frame !== null);
 
-  // Build the table
-  const table = [
-    '| Function | Location |',
-    '|----------|----------|',
-    ...frames.map((frame) => `| ${frame.functionName} | ${frame.location} |`),
-  ].join('\n');
-
-  return `## ${errorMessage}\n\n${table}`;
+  return `${errorMessage}\n${frames.join('\n')}`;
 };

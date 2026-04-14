@@ -1,14 +1,5 @@
-import {
-  circularTransformer,
-  serializeBaseMessage,
-  serializeLangfuseMedia,
-  serializePrompts,
-} from './langfuse.parser';
+import { circularTransformer, serializeLangfuseMedia, serializePrompts } from './langfuse.parser';
 
 export const serializeInputsOutputs = async (data: any): Promise<any> => {
-  return circularTransformer(data, [
-    serializeBaseMessage,
-    serializePrompts,
-    serializeLangfuseMedia,
-  ]);
+  return circularTransformer(data, [serializePrompts, serializeLangfuseMedia]);
 };

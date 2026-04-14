@@ -1,5 +1,5 @@
 {
-  "name": "@dl-tech/langchain",
+  "name": "@workspace/langchain",
   "version": "1.0.0",
   "description": "LangChain utilities for NestJS",
   "main": "./dist/index.js",
@@ -22,8 +22,13 @@
     "src"
   ],
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch"
+    "build": "pnpm tsup && pnpm install --prefer-offline --ignore-scripts --frozen-lockfile",
+    "dev": "nodemon",
+    "prepare": "tsup"
+  },
+  "dependencies": {
+    "fluent-json-schema": "^6.0.0",
+    "partial-json": "0.1.7"
   },
   "peerDependencies": {
     "@langchain/core": ">=1.0.0",
@@ -35,12 +40,18 @@
     "rxjs": ">=7.0.0",
     "zod": ">=3.0.0"
   },
-  "dependencies": {
-    "fluent-json-schema": "^6.0.0",
-    "partial-json": "^0.1.7"
-  },
   "devDependencies": {
+    "@langchain/core": "1.1.39",
+    "@nestjs/common": "11.1.17",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.4",
+    "langchain": "1.2.35",
+    "nodemon": "^3.1.7",
+    "prettier": "^3.8.2",
+    "reflect-metadata": ">=0.1.0",
+    "rxjs": ">=7.0.0",
     "tsup": "^8.5.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^3.25.76"
   }
 }

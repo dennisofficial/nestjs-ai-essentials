@@ -39,6 +39,7 @@ export interface AgentToolCallOptions<T extends Record<string, any> = Record<str
 
 export interface RunnableAgentOptions {
   llm: BaseChatModel;
+  llmFallbacks?: BaseChatModel[];
   tools: AgentToolCallOptions[];
   history?: BaseListChatMessageHistory;
   // End the agent using a tool_call. Ensure you instruct the AI to use this to end the agent.
@@ -122,7 +123,23 @@ export class RunnableAgent extends Runnable<BaseLanguageModelInput, BaseMessage[
       throw new Error('LLM does not support tool binding');
     }
 
-    return boundLlm
+    const fallbackLlms = (this.options.llmFallbacks ?? []).map((llm) => {
+      const boundFallback = llm.bindTools?.(tools, {
+        tool_choice: this.options.tool_response ? 'any' : 'auto',
+      });
+
+      if (!boundFallback) {
+        throw new Error('Fallback LLM does not support tool binding');
+      }
+
+      return boundFallback;
+    });
+
+    const runnableLlm = fallbackLlms.length
+      ? boundLlm.withFallbacks({ fallbacks: fallbackLlms })
+      : boundLlm;
+
+    return runnableLlm
       .withConfig({
         ...config,
         callbacks: runManager?.getChild('llm'),

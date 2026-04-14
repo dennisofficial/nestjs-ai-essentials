@@ -217,7 +217,10 @@ const getProperties = (proto_keys: string[], target: any, v2: boolean = false) =
       return acc.prop(key, Reflect.getMetadata(KEY_PROP_OPTIONS, target, key));
     }, S.object());
 
-    return schema.additionalProperties(false).valueOf();
+    return sanitizeJsonSchema(schema.additionalProperties(false).valueOf()) as Record<
+      string,
+      unknown
+    >;
   }
 
   const properties = proto_keys.reduce(
@@ -232,11 +235,11 @@ const getProperties = (proto_keys: string[], target: any, v2: boolean = false) =
     (key) => !Reflect.getMetadata(KEY_PROP_OPTIONAL, target, key),
   );
 
-  return {
+  return sanitizeJsonSchema({
     type: 'object',
     properties,
     required,
-  };
+  }) as Record<string, unknown>;
 };
 
 const handleType = (type: Constructor<unknown> | Enum<unknown>): Record<string, any> => {
@@ -289,6 +292,55 @@ const titleCase = (str: string): string =>
     .toLowerCase()
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (s) => s.toUpperCase());
+
+const sanitizeJsonSchema = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeJsonSchema);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const input = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+
+  for (const [key, val] of Object.entries(input)) {
+    if (key === '$schema' || key === '$id' || key === 'id') {
+      continue;
+    }
+    output[key] = sanitizeJsonSchema(val);
+  }
+
+  // JSON Schema 2020-12 expects numeric exclusive* values, not booleans.
+  if (typeof output.exclusiveMaximum === 'boolean') {
+    if (output.exclusiveMaximum && typeof output.maximum === 'number') {
+      output.exclusiveMaximum = output.maximum;
+      delete output.maximum;
+    } else {
+      delete output.exclusiveMaximum;
+    }
+  }
+  if (typeof output.exclusiveMinimum === 'boolean') {
+    if (output.exclusiveMinimum && typeof output.minimum === 'number') {
+      output.exclusiveMinimum = output.minimum;
+      delete output.minimum;
+    } else {
+      delete output.exclusiveMinimum;
+    }
+  }
+
+  // Anthropic rejects object-only keywords on non-object schemas.
+  if (output.type !== 'object') {
+    delete output.additionalProperties;
+    delete output.properties;
+    delete output.required;
+    delete output.minProperties;
+    delete output.maxProperties;
+  }
+
+  return output;
+};
 
 // ################ //
 // ## DECORATORS ## //
@@ -643,7 +695,11 @@ export class ClassToolOutputParser<
     const jsonResponse = tool_call.args;
 
     // Validation
-    const errors = await validate(plainToInstance(this.clazz, jsonResponse));
+    const errors = await validate(plainToInstance(this.clazz, jsonResponse), {
+      // Many tool DTOs only use Ai* decorators (schema metadata) and no class-validator decorators.
+      // class-validator >=0.14 flags these as unknown values unless explicitly disabled.
+      forbidUnknownValues: false,
+    });
     if (errors.length) {
       throw new Error(`Invalid Output From LLM.\n${JSON.stringify(errors, null, 2)}`);
     }

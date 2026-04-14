@@ -13,6 +13,7 @@ import {
   LangfuseSpan,
   LangfuseSpanAttributes,
   LangfuseTool,
+  propagateAttributes,
   startObservation,
 } from '@langfuse/tracing';
 import { LangfuseCallbackHandler, LangfuseCallbackOptions } from './langfuse.callback';
@@ -31,6 +32,7 @@ interface TypeToObserver {
   evaluator: LangfuseEvaluator;
   guardrail: LangfuseGuardrail;
 }
+
 interface TypeToAttributes {
   span: LangfuseSpanAttributes;
   generation: LangfuseGenerationAttributes;
@@ -43,6 +45,32 @@ interface TypeToAttributes {
   guardrail: LangfuseSpanAttributes;
 }
 
+type RootTraceAttributes = {
+  userId?: string;
+  sessionId?: string;
+  tags?: string[];
+  version?: string;
+  traceMetadata?: Record<string, unknown>;
+};
+
+type TraceCaptureOptions = {
+  captureInput?: boolean;
+  captureOutput?: boolean;
+};
+
+const stringifyMetadata = (
+  metadata?: Record<string, unknown>,
+): Record<string, string> | undefined => {
+  if (!metadata) return undefined;
+
+  const entries = Object.entries(metadata);
+  if (entries.length === 0) return undefined;
+
+  return Object.fromEntries(
+    entries.map(([key, value]) => [key, typeof value === 'string' ? value : JSON.stringify(value)]),
+  );
+};
+
 export class RunTracer {
   static from = (options?: LangfuseCallbackOptions): LangfuseCallbackHandler => {
     return new LangfuseCallbackHandler(options);
@@ -51,16 +79,28 @@ export class RunTracer {
   static traceAsync<OType extends Exclude<LangfuseObservationType, 'event'>>(
     params: {
       name: string;
-    } & Omit<LangfuseSpanAttributes, 'output'>,
+    } & RootTraceAttributes &
+      Omit<LangfuseSpanAttributes, 'output'>,
   ): TypeToObserver[OType] {
-    const { name, ...attributes } = params;
+    const { name, userId, sessionId, tags, version, traceMetadata, ...attributes } = params;
 
-    const observer = startObservation(name, attributes, {
-      asType: 'span',
-      parentSpanContext: parseParentContext(undefined),
-    });
-    observer.updateTrace({ name });
-    return observer;
+    const create = () =>
+      startObservation(name, attributes, {
+        asType: 'span',
+        parentSpanContext: parseParentContext(undefined),
+      });
+
+    return propagateAttributes(
+      {
+        traceName: name,
+        userId,
+        sessionId,
+        tags,
+        version,
+        metadata: stringifyMetadata(traceMetadata),
+      },
+      create,
+    );
   }
 
   static async traceEvent<T>(
@@ -68,23 +108,38 @@ export class RunTracer {
     params: {
       name: string;
       parent?: LangfuseObservation;
-    } & Omit<LangfuseEventAttributes, 'output'>,
+    } & RootTraceAttributes &
+      Omit<LangfuseEventAttributes, 'output'>,
   ): Promise<T> {
-    const { name, parent, ...attributes } = params;
+    const { name, parent, userId, sessionId, tags, version, traceMetadata, ...attributes } = params;
 
-    const parentSpanContext = parseParentContext(parent);
-    const observer = startObservation(
-      name,
-      {
-        ...attributes,
-        output: await serializeInputsOutputs(output),
-        input: await serializeInputsOutputs(params.input),
-      },
-      { asType: 'event', parentSpanContext },
-    );
-    if (!parent) {
-      observer.updateTrace({ name });
-    }
+    const serializedInput = await serializeInputsOutputs(params.input);
+    const serializedOutput = await serializeInputsOutputs(output);
+
+    const create = async () =>
+      startObservation(
+        name,
+        {
+          ...attributes,
+          input: serializedInput,
+          output: serializedOutput,
+        },
+        { asType: 'event', parentSpanContext: parseParentContext(parent) },
+      );
+
+    const observer = parent
+      ? await create()
+      : await propagateAttributes(
+          {
+            traceName: name,
+            userId,
+            sessionId,
+            tags,
+            version,
+            metadata: stringifyMetadata(traceMetadata),
+          },
+          create,
+        );
     observer.end();
     return output;
   }
@@ -95,34 +150,73 @@ export class RunTracer {
       name: string;
       parent?: LangfuseObservation;
       type?: OType;
-    } & Omit<TypeToAttributes[OType], 'output'>,
+    } & RootTraceAttributes &
+      TraceCaptureOptions &
+      Omit<TypeToAttributes[OType], 'output'>,
   ): Promise<T> {
-    const { name, parent, type, ...attributes } = params;
+    const {
+      name,
+      parent,
+      type,
+      userId,
+      sessionId,
+      tags,
+      version,
+      traceMetadata,
+      captureInput = true,
+      captureOutput = true,
+      ...attributes
+    } = params;
 
-    const observer: TypeToObserver[OType] = startObservation(name, attributes, {
-      // @ts-ignore This is correct. The package has unique typings
-      asType: type ?? 'agent',
-      parentSpanContext: parseParentContext(parent),
-    });
-    if (!parent) observer.updateTrace({ name });
+    const {
+      input: initialInput,
+      metadata: initialMetadata,
+      output: _initialOutput,
+      ...startAttributes
+    } = attributes as TypeToAttributes[OType] & {
+      input?: unknown;
+      output?: unknown;
+      metadata?: Record<string, unknown>;
+    };
+
+    const create = () =>
+      startObservation(name, startAttributes, {
+        // @ts-ignore This is correct. The package has unique typings
+        asType: type ?? 'agent',
+        parentSpanContext: parseParentContext(parent),
+      }) as TypeToObserver[OType];
+
+    const observer: TypeToObserver[OType] = parent
+      ? create()
+      : propagateAttributes(
+          {
+            traceName: name,
+            userId,
+            sessionId,
+            tags,
+            version,
+            metadata: stringifyMetadata(traceMetadata),
+          },
+          create,
+        );
 
     try {
-      // Handle media in input
-      try {
-        const transformedInput = await handleMedia(
-          params.input,
-          'input',
-          observer.traceId,
-          observer.id,
-        );
-        const input = await serializeInputsOutputs(transformedInput);
-        if (!parent) observer.updateTrace({ input });
-        observer.update({ input: await serializeInputsOutputs(transformedInput) });
-      } catch (e) {
-        const input = await serializeInputsOutputs(params.input);
-        if (!parent) observer.updateTrace({ input });
-        observer.update({ input: await serializeInputsOutputs(params.input) });
-        console.error('Error handling media in input', e);
+      if (captureInput) {
+        // Handle media in input
+        try {
+          const transformedInput = await handleMedia(
+            initialInput,
+            'input',
+            observer.traceId,
+            observer.id,
+          );
+          const input = await serializeInputsOutputs(transformedInput);
+          observer.update({ input });
+        } catch (e) {
+          const input = await serializeInputsOutputs(initialInput);
+          observer.update({ input });
+          console.error('Error handling media in input', e);
+        }
       }
 
       // Execute a wrapped function and await it if it is async
@@ -132,26 +226,26 @@ export class RunTracer {
         else resolve(result);
       });
 
-      try {
-        const transformedOutput = await handleMedia(
-          result,
-          'output',
-          observer.traceId,
-          observer.id,
-        );
-        const output = await serializeInputsOutputs(transformedOutput);
-        observer.update({ output });
-        if (!parent) observer.updateTrace({ output });
-      } catch (e) {
-        const output = await serializeInputsOutputs(result);
-        observer.update({ output });
-        if (!parent) observer.updateTrace({ output });
-        console.error('Error handling media in output', e);
+      if (captureOutput) {
+        try {
+          const transformedOutput = await handleMedia(
+            result,
+            'output',
+            observer.traceId,
+            observer.id,
+          );
+          const output = await serializeInputsOutputs(transformedOutput);
+          observer.update({ output });
+        } catch (e) {
+          const output = await serializeInputsOutputs(result);
+          observer.update({ output });
+          console.error('Error handling media in output', e);
+        }
       }
 
       try {
-        const transformedMetadata: typeof params.metadata = (await handleMedia(
-          params.metadata,
+        const transformedMetadata: typeof initialMetadata = (await handleMedia(
+          initialMetadata,
           'metadata',
           observer.traceId,
           observer.id,
@@ -185,7 +279,7 @@ export class RunTracer {
 
       try {
         const transformedMetadata = await handleMedia(
-          params.metadata,
+          initialMetadata,
           'metadata',
           observer.traceId,
           observer.id,

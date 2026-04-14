@@ -1,3 +1,4 @@
+import { setupLangfuseInstruments } from '@workspace/langfuse';
 import { singleton } from 'tsyringe';
 import { ArgumentsCamelCase, CommandBuilder, CommandModule, Options } from 'yargs';
 import { existsSync } from 'fs-extra';
@@ -10,7 +11,9 @@ import { isDefined } from 'class-validator';
 import { progressBar } from '../modules/progress-bar';
 import { proxyConsole, restoreConsole } from '../modules/console-proxy';
 import { LangfuseClient } from '@langfuse/client';
-import { RunTracer } from '@dl-tech/langfuse';
+import { RunTracer } from '@workspace/langfuse';
+
+setupLangfuseInstruments();
 
 interface Args extends Options {
   file_name: string;
@@ -139,7 +142,12 @@ export class RunCommand<T extends object, U extends Args> implements CommandModu
                       async (fn): Promise<TestResult | TestResult[] | undefined> => {
                         await sema.acquire();
                         try {
-                          const result = fn(input, runResult, output, evalTree as any);
+                          const result = fn(
+                            input,
+                            runResult,
+                            output,
+                            RunTracer.from({ parent: evalTree }),
+                          );
                           let testResult;
                           if (result instanceof Promise) {
                             testResult = await result;
@@ -151,6 +159,7 @@ export class RunCommand<T extends object, U extends Args> implements CommandModu
                           if (Array.isArray(testResult)) {
                             for (const result of testResult) {
                               client.score.create({
+                                traceId: test_run.traceId,
                                 observationId: test_run.id,
                                 name: result.key,
                                 value: result.grade,
@@ -158,6 +167,7 @@ export class RunCommand<T extends object, U extends Args> implements CommandModu
                             }
                           } else {
                             client.score.create({
+                              traceId: test_run.traceId,
                               observationId: test_run.id,
                               name: testResult.key,
                               value: testResult.grade,
@@ -205,6 +215,7 @@ export class RunCommand<T extends object, U extends Args> implements CommandModu
     // Upload Test Results to root trace
     for (const [key, score] of Object.entries(averages)) {
       client.score.create({
+        traceId: run_tree.traceId,
         observationId: run_tree.id,
         name: key,
         value: score,

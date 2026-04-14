@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs';
 import { container } from 'tsyringe';
-import { RunCommand } from './commands/run';
 import { config } from 'dotenv';
 
 config({
@@ -14,9 +13,15 @@ config({
 });
 process.env.NODE_ENV = 'test';
 
-yargs(hideBin(process.argv))
-  .scriptName('ai-testing')
-  .command(container.resolve(RunCommand))
-  .showHelpOnFail(true)
-  .help()
-  .parse();
+async function main() {
+  const { RunCommand } = await import('./commands/run.js');
+
+  yargs(hideBin(process.argv))
+    .scriptName('ai-testing')
+    .command(container.resolve(RunCommand))
+    .showHelpOnFail(true)
+    .help()
+    .parse();
+}
+
+void main();

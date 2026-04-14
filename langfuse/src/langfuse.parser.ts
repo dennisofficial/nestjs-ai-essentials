@@ -1,20 +1,6 @@
 import { isDefined } from 'class-validator';
-import {
-  AIMessage,
-  AIMessageChunk,
-  BaseMessage,
-  FunctionMessage,
-  FunctionMessageChunk,
-  HumanMessage,
-  HumanMessageChunk,
-  SystemMessage,
-  SystemMessageChunk,
-  ToolMessage,
-  ToolMessageChunk,
-} from '@langchain/core/messages';
 import { LangfuseMedia } from '@langfuse/core';
 import { ChatPromptValue } from '@langchain/core/prompt_values';
-import { LlmMessage } from './langfuse.callback';
 
 export const circularTransformer = async (
   data: unknown,
@@ -89,63 +75,3 @@ export const serializeLangfuseMedia = async (media: any): Promise<string | null>
   }
   return null;
 };
-
-export const serializeBaseMessage = (message: any, debug?: boolean): LlmMessage | undefined => {
-  if (!BaseMessage.isInstance(message)) return;
-
-  const response: LlmMessage = { role: message.type };
-
-  if (isDefined(message.content) && message.content.length) {
-    response.content = message.content;
-  }
-
-  if (isSystemMessage(message)) {
-    response.role = 'system';
-  }
-
-  if (isHumanMessage(message)) {
-    response.role = 'user';
-  }
-
-  if (isFunctionMessage(message)) {
-    response.role = message.name ?? response.role;
-  }
-
-  if (isAiMessage(message)) {
-    response.role = 'assistant';
-
-    if (message.tool_calls?.length) {
-      if (isDefined(message.content) && message.content.length) {
-        response.content = undefined;
-      }
-
-      response.additional_kwargs = { tool_calls: message.tool_calls };
-    }
-  }
-
-  if (isToolMessage(message)) {
-    response.role = message.name ?? response.role;
-
-    response.additional_kwargs = {
-      tool_call_id: message.tool_call_id,
-      tool_call_name: message.name,
-    };
-  }
-
-  return response;
-};
-
-const isAiMessage = (obj: any): obj is AIMessage | AIMessageChunk =>
-  AIMessage.isInstance(obj) || AIMessageChunk.isInstance(obj);
-
-const isToolMessage = (obj: any): obj is ToolMessage | ToolMessageChunk =>
-  ToolMessage.isInstance(obj) || ToolMessageChunk.isInstance(obj);
-
-const isFunctionMessage = (obj: any): obj is FunctionMessage | FunctionMessageChunk =>
-  FunctionMessage.isInstance(obj) || FunctionMessageChunk.isInstance(obj);
-
-const isHumanMessage = (obj: any): obj is HumanMessage | HumanMessageChunk =>
-  HumanMessage.isInstance(obj) || HumanMessageChunk.isInstance(obj);
-
-const isSystemMessage = (obj: any): obj is SystemMessage | SystemMessageChunk =>
-  SystemMessage.isInstance(obj) || SystemMessageChunk.isInstance(obj);
