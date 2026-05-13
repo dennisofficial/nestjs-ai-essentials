@@ -2,12 +2,12 @@ import 'reflect-metadata';
 import { hideBin } from 'yargs/helpers';
 import yargs from 'yargs';
 import { container } from 'tsyringe';
-import { config } from 'dotenv';
+import { config } from '@dotenvx/dotenvx';
 
 config({
-  path: ['.env.vault', '.env', '.env.local'],
-  override: true,
-  DOTENV_KEY: process.env.DOTENV_KEY,
+  path: ['.env.local.enc', '.env', '.env.local'],
+  overload: true,
+  ignore: ['MISSING_ENV_FILE'],
   encoding: 'utf-8',
   quiet: true,
 });
