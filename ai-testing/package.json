@@ -35,9 +35,8 @@
     "src"
   ],
   "scripts": {
-    "build": "pnpm tsup && pnpm install --prefer-offline --ignore-scripts --frozen-lockfile",
-    "dev": "nodemon",
-    "prepare": "tsup"
+    "build": "pnpm tsup",
+    "dev": "nodemon"
   },
   "dependencies": {
     "async-sema": "^3.1.1",
