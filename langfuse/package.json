@@ -76,6 +76,6 @@
     "reflect-metadata": ">=0.1.0",
     "rxjs": ">=7.0.0",
     "tsup": "^8.5.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
