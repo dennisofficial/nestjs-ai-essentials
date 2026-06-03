@@ -21,7 +21,6 @@ import {
   propagateAttributes,
   startActiveObservation,
 } from '@langfuse/tracing';
-import { cleanStackTrace } from './langfuse.utils';
 
 const LANGSMITH_HIDDEN_TAG = 'langsmith:hidden';
 
@@ -266,8 +265,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
         runId,
         attributes: {
           level: 'ERROR',
-          statusMessage:
-            cleanStackTrace(err instanceof Error ? err.stack : undefined) ?? String(err),
+          statusMessage: String(err),
         },
       });
     } catch (e) {
@@ -812,14 +810,11 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
   /** Not all models supports tokenUsage in llmOutput, can use AIMessage.usage_metadata instead */
   private extractUsageMetadata(generation: Generation): UsageMetadata | undefined {
     try {
-      const usageMetadata =
-        'message' in generation &&
+      return 'message' in generation &&
         (generation['message'] instanceof AIMessage ||
           generation['message'] instanceof AIMessageChunk)
-          ? generation['message'].usage_metadata
-          : undefined;
-
-      return usageMetadata;
+        ? generation['message'].usage_metadata
+        : undefined;
     } catch (err) {
       this.logger.debug(`Error extracting usage metadata: ${err}`);
 
