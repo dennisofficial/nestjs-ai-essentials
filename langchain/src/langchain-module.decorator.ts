@@ -1,6 +1,6 @@
-import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
-import { Type } from '@nestjs/common';
 import { Runnable } from '@langchain/core/runnables';
+import { Type } from '@nestjs/common';
+import { FactoryProvider } from '@nestjs/common/interfaces/modules/provider.interface';
 
 export type RunnableInput<T> = T extends Runnable<infer A> ? A : never;
 export type RunnableOutput<T> = T extends Runnable<any, infer B> ? B : never;

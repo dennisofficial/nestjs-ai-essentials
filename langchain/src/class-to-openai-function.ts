@@ -1,12 +1,12 @@
-import 'reflect-metadata';
 import { FunctionDefinition } from '@langchain/core/language_models/base';
-import S, { JSONSchema } from 'fluent-json-schema';
-import { ChatGeneration, Generation } from '@langchain/core/outputs';
-import { BaseCumulativeTransformOutputParser } from '@langchain/core/output_parsers';
 import { BindToolsInput } from '@langchain/core/language_models/chat_models';
-import { parse as parsePartialJson } from 'partial-json';
+import { BaseCumulativeTransformOutputParser } from '@langchain/core/output_parsers';
+import { ChatGeneration, Generation } from '@langchain/core/outputs';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import S, { JSONSchema } from 'fluent-json-schema';
+import { parse as parsePartialJson } from 'partial-json';
+import 'reflect-metadata';
 
 // ############### //
 // ## CONSTANTS ## //
