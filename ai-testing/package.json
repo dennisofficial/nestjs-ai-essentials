@@ -1,13 +1,10 @@
 {
   "name": "@workspace/ai-testing",
-  "version": "1.0.0",
-  "description": "AI Testing Framework for LangChain applications",
+  "version": "2.0.0",
+  "description": "Local eval harness for LangChain chains and agents. Vitest is the runner — this package provides evalDataset() for aggregating scores across large datasets.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./src/types/index.ts",
-  "bin": {
-    "ai-testing": "./dist/index.js"
-  },
+  "types": "./src/index.ts",
   "exports": {
     ".": {
       "import": {
@@ -18,16 +15,6 @@
         "types": "./src/index.ts",
         "default": "./dist/index.js"
       }
-    },
-    "./types": {
-      "import": {
-        "types": "./src/types/index.ts",
-        "default": "./dist/types/index.mjs"
-      },
-      "require": {
-        "types": "./src/types/index.ts",
-        "default": "./dist/types/index.js"
-      }
     }
   },
   "files": [
@@ -35,60 +22,21 @@
     "src"
   ],
   "scripts": {
-    "build": "pnpm tsup",
-    "dev": "nodemon"
+    "build": "pnpm tsup"
   },
-  "dependencies": {
-    "async-sema": "^3.1.1",
-    "chalk": "^4.1.2",
-    "cli-progress": "^3.12.0",
-    "@dotenvx/dotenvx": "^1.51.4",
-    "fs-extra": "^11.2.0",
-    "glob": "^13.0.6",
-    "pretty-ms": "^7.0.1",
-    "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0",
-    "tsyringe": "^4.8.0",
-    "typescript": "^6.0.3",
-    "vm": "^0.1.0",
-    "yargs": "^17.7.2"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "@langchain/core": ">=1.0.0",
-    "@langfuse/client": ">=5.0.0",
-    "@langfuse/langchain": ">=5.0.0",
-    "@langfuse/otel": ">=5.0.0",
-    "@langfuse/tracing": ">=5.0.0",
-    "@nestjs/common": ">=11.0.0",
-    "@opentelemetry/sdk-node": ">=0.50.0",
-    "@workspace/langfuse": "workspace:*",
-    "class-transformer": ">=0.5.0",
-    "class-validator": ">=0.14.0",
-    "langchain": ">=1.0.0",
-    "reflect-metadata": ">=0.1.0",
-    "rxjs": ">=7.0.0"
+    "agentevals": ">=0.0.7",
+    "openevals": ">=0.1.0"
   },
   "devDependencies": {
     "@langchain/core": "^1.1.39",
-    "@langfuse/client": "^5.0.2",
-    "@langfuse/langchain": "^5.0.2",
-    "@langfuse/otel": "^5.0.2",
-    "@langfuse/tracing": "^5.0.2",
-    "@nestjs/common": "^11.1.18",
-    "@opentelemetry/sdk-node": "^0.214.0",
-    "@types/cli-progress": "^3.11.5",
-    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.19.0",
-    "@types/yargs": "^17.0.35",
-    "@workspace/langfuse": "workspace:*",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.4",
-    "langchain": "^1.3.1",
-    "nodemon": "^3.1.7",
+    "agentevals": "^0.0.7",
+    "openevals": "^0.1.0",
     "prettier": "^3.8.2",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.0",
     "tsup": "^8.5.0",
-    "zod": "^3.25.76"
+    "typescript": "^5.7.3"
   }
 }

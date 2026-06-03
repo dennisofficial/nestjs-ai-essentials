@@ -15,11 +15,6 @@ const external = [
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
-    'types/index': 'src/types/index.ts',
-  },
-  // Preserve shebang for CLI bin file
-  banner: {
-    js: '#!/usr/bin/env node',
   },
   format: ['cjs', 'esm'],
   dts: false,
