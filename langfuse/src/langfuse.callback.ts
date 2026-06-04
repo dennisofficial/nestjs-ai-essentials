@@ -39,6 +39,14 @@ type LangfusePrompt = {
   isFallback: boolean;
 };
 
+/*
+A prompt can be registered either directly, or as a thunk that resolves it lazily.
+The lazy form lets a runnable attach `metadata.langfusePrompt` at construction time
+(before it knows which prompt version it will use) and populate it mid-run — the thunk
+is evaluated when the generation links to it, by which point it has resolved.
+*/
+type LangfusePromptResolver = LangfusePrompt | (() => LangfusePrompt | undefined);
+
 export type LlmMessage = {
   role: string;
   content: BaseMessageFields['content'];
@@ -70,7 +78,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
   private readonly parentObserver?: LangfuseObservation;
 
   private completionStartTimes: Record<string, Date> = {};
-  private promptToParentRunMap = new Map<string, LangfusePrompt>();
+  private promptToParentRunMap = new Map<string, LangfusePromptResolver>();
   private runMap: Map<string, LangfuseObservation> = new Map();
   private skippedRunMap: Map<string, string> = new Map();
 
@@ -691,7 +699,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
     So, we do not need to register any prompt for linking if parentRunId is missing.
     */
     if (metadata && 'langfusePrompt' in metadata && parentRunId) {
-      this.promptToParentRunMap.set(parentRunId, metadata.langfusePrompt as LangfusePrompt);
+      this.promptToParentRunMap.set(parentRunId, metadata.langfusePrompt as LangfusePromptResolver);
     }
   }
 
@@ -716,9 +724,13 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
     while (currentRunId && !visited.has(currentRunId)) {
       visited.add(currentRunId);
 
-      const prompt = this.promptToParentRunMap.get(currentRunId);
-      if (prompt) {
-        return { prompt, runId: currentRunId };
+      const entry = this.promptToParentRunMap.get(currentRunId);
+      if (entry) {
+        // Resolve the thunk form lazily; a direct prompt passes through unchanged.
+        const prompt = typeof entry === 'function' ? entry() : entry;
+        if (prompt) {
+          return { prompt, runId: currentRunId };
+        }
       }
 
       currentRunId = this.skippedRunMap.get(currentRunId);

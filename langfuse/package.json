@@ -27,11 +27,13 @@
   },
   "peerDependencies": {
     "@langchain/core": ">=1.0.0",
+    "@langfuse/client": ">=5.0.0",
     "@langfuse/core": ">=5.0.0",
     "@langfuse/tracing": ">=5.0.0"
   },
   "devDependencies": {
     "@langchain/core": "1.1.39",
+    "@langfuse/client": "^5.1.0",
     "@langfuse/core": "^5.1.0",
     "@langfuse/tracing": "^5.1.0",
     "nodemon": "^3.1.7",
