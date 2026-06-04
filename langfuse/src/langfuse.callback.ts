@@ -320,10 +320,11 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
       extractedModelName = invocationParamsModelName ?? metadataModelName;
     }
 
-    const registeredPrompt = this.promptToParentRunMap.get(parentRunId ?? 'root');
+    const { prompt: registeredPrompt, runId: registeredPromptRunId } =
+      this.findRegisteredPrompt(parentRunId);
 
-    if (registeredPrompt && parentRunId) {
-      this.deregisterLangfusePrompt(parentRunId);
+    if (registeredPrompt && registeredPromptRunId) {
+      this.deregisterLangfusePrompt(registeredPromptRunId);
     }
 
     this.startAndRegisterOtelSpan({
@@ -696,6 +697,34 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
 
   private deregisterLangfusePrompt(runId: string): void {
     this.promptToParentRunMap.delete(runId);
+  }
+
+  /*
+  Find a prompt registered for the given run or any of its ancestors.
+
+  A prompt is registered against the parentRunId of the prompt-template run (see `registerLangfusePrompt`). The generation that should link to it does not always share that parentRunId: it can be nested several levels deeper when the LLM is wrapped in retry/fallback runnables. Those wrappers are `Runnable*` runs that are skipped from tracing and recorded in `skippedRunMap` (see `shouldTrace`), so we climb that chain — checking each level for a registered prompt — until we find one or run out of skipped ancestors. The `visited` set guards against cycles, mirroring `resolveParentRunId`.
+
+  Returns the prompt together with the runId it was registered under, so the caller can deregister the correct key.
+  */
+  private findRegisteredPrompt(parentRunId?: string): {
+    prompt?: LangfusePrompt;
+    runId?: string;
+  } {
+    let currentRunId: string | undefined = parentRunId ?? 'root';
+    const visited = new Set<string>();
+
+    while (currentRunId && !visited.has(currentRunId)) {
+      visited.add(currentRunId);
+
+      const prompt = this.promptToParentRunMap.get(currentRunId);
+      if (prompt) {
+        return { prompt, runId: currentRunId };
+      }
+
+      currentRunId = this.skippedRunMap.get(currentRunId);
+    }
+
+    return {};
   }
 
   private startAndRegisterOtelSpan(params: {
