@@ -77,7 +77,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
   public last_trace_id: string | null = null;
 
   constructor(params?: LangfuseCallbackOptions) {
-    super({ _awaitHandler: true });
+    super({});
 
     this.sessionId = params?.sessionId;
     this.userId = params?.userId;
@@ -321,6 +321,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
     }
 
     const registeredPrompt = this.promptToParentRunMap.get(parentRunId ?? 'root');
+
     if (registeredPrompt && parentRunId) {
       this.deregisterLangfusePrompt(parentRunId);
     }
