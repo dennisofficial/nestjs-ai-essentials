@@ -16,7 +16,7 @@ import { getGlobalLogger } from '@langfuse/core';
 import {
   LangfuseEvent,
   LangfuseGenerationAttributes,
-  type LangfuseObservation,
+  LangfuseObservation,
   LangfuseSpanAttributes,
   propagateAttributes,
   startActiveObservation,
@@ -265,7 +265,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
         runId,
         attributes: {
           level: 'ERROR',
-          statusMessage: String(err),
+          statusMessage: err.toString() + azureRefusalError,
         },
       });
     } catch (e) {
@@ -358,7 +358,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
         message.map((m) => this.extractChatMessageContent(m)),
       );
 
-      await this.handleGenerationStart(
+      void this.handleGenerationStart(
         llm,
         prompts,
         runId,
@@ -427,7 +427,7 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
     try {
       this.logger.debug(`LLM start with ID: ${runId}`);
 
-      await this.handleGenerationStart(
+      void this.handleGenerationStart(
         llm,
         prompts,
         runId,

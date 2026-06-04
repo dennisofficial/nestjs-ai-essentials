@@ -38,8 +38,6 @@ export interface EvalDatasetOptions<In, Out> {
 export interface EvalDatasetResult {
   /** Average score (0..1) per metric key across all successful cases. */
   scores: Record<string, number>;
-  /** Cases that threw — excluded from averages. */
-  errors: number;
   total: number;
 }
 
@@ -48,8 +46,10 @@ export async function evalDataset<In, Out>(
 ): Promise<EvalDatasetResult> {
   const { dataset, run, evaluators, callbacks, concurrency = 5 } = options;
 
+  void callbacks;
+
   const allScores: EvaluatorResult[] = [];
-  let errors = 0;
+  const caseErrors: Array<{ index: number; error: Error }> = [];
   let cursor = 0;
 
   const worker = async () => {
@@ -70,16 +70,23 @@ export async function evalDataset<In, Out>(
 
         allScores.push(...results);
       } catch (e) {
-        errors++;
+        caseErrors.push({
+          index,
+          error: e instanceof Error ? e : new Error(String(e)),
+        });
       }
     }
   };
 
-  // Suppress TS unused warning — callbacks is passed through run() when the
-  // caller uses it; for chains that ignore config it's a no-op.
-  void callbacks;
-
   await Promise.all(Array.from({ length: Math.min(concurrency, dataset.length) }, worker));
+
+  if (caseErrors.length > 0) {
+    const details = caseErrors
+      .sort((a, b) => a.index - b.index)
+      .map(({ index, error }) => `  [${index + 1}/${dataset.length}] ${error.message}`)
+      .join('\n');
+    throw new Error(`${caseErrors.length} case(s) failed:\n${details}`);
+  }
 
   const totals = new Map<string, { sum: number; count: number }>();
   for (const { key, score } of allScores) {
@@ -94,5 +101,5 @@ export async function evalDataset<In, Out>(
     Array.from(totals.entries()).map(([key, { sum, count }]) => [key, sum / count]),
   );
 
-  return { scores, errors, total: dataset.length };
+  return { scores, total: dataset.length };
 }
