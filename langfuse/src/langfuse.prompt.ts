@@ -22,6 +22,28 @@ export class MissingPromptVariableError extends Error {
   }
 }
 
+/**
+ * True for the Langfuse "this prompt version does not exist" 404. A version pruned
+ * from Langfuse must not abort the step-down or mask the real cause above it (e.g. a
+ * `MissingPromptVariableError` from a newer version) — the step-down skips it instead.
+ */
+function isPromptVersionNotFound(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false;
+  const e = error as {
+    statusCode?: number;
+    status?: number;
+    name?: string;
+    body?: { error?: string };
+  };
+  return (
+    e.statusCode === 404 ||
+    e.status === 404 ||
+    e.name === 'LangfuseNotFoundError' ||
+    e.name === 'NotFoundError' ||
+    e.body?.error === 'LangfuseNotFoundError'
+  );
+}
+
 export interface LangfusePromptOptions {
   /** Fetch a specific label (e.g. `production`, `latest`). Mirrors `prompt.get`. */
   label?: string;
@@ -50,6 +72,10 @@ export interface LangfusePromptOptions {
  * the next-older version is tried, mirroring how `llmFallback` shows a failed model
  * before its fallback. Resolution is per-invoke; Langfuse's own client cache keeps
  * the fetches cheap and lets new versions be picked up without a redeploy.
+ *
+ * A version deleted from Langfuse (a 404 mid-step-down) is skipped rather than
+ * surfaced, so a pruned older version can never mask the real cause — the
+ * `MissingPromptVariableError` from the newest version is what gets thrown.
  */
 export class LangfusePrompt<TInput extends Record<string, unknown> = Record<string, unknown>> {
   private readonly client: LangfuseClient;
@@ -76,8 +102,10 @@ export class LangfusePrompt<TInput extends Record<string, unknown> = Record<stri
     return RunnableLambda.from<TInput, BasePromptValueInterface>(async (input, config) => {
       const startVersion = await this.resolveStartVersion();
       const minVersion = this.options.minVersion ?? 1;
+      const pinned = this.options.version !== undefined;
 
       let lastError: unknown;
+      let firstMissingVarError: MissingPromptVariableError | undefined;
       for (let version = startVersion; version >= minVersion; version--) {
         try {
           // Each version is its own runnable, so a failed attempt is a visible,
@@ -85,13 +113,29 @@ export class LangfusePrompt<TInput extends Record<string, unknown> = Record<stri
           return await this.versionAttempt(version, holder).invoke(input, config);
         } catch (error) {
           lastError = error;
-          // Only a missing variable steps down a version; anything else is a real
-          // failure and is surfaced immediately.
-          if (error instanceof MissingPromptVariableError && version > minVersion) continue;
+          // A missing variable is the canonical step-down trigger. Remember the
+          // first (newest-version) occurrence — it is the most actionable
+          // explanation if the step-down ultimately fails — then try the
+          // next-older version.
+          if (error instanceof MissingPromptVariableError) {
+            firstMissingVarError ??= error;
+            continue;
+          }
+          // A pruned/deleted version (404) must not abort the step-down or mask a
+          // real cause from a newer version. Skip it and keep going — unless the
+          // version was explicitly pinned, where the caller asked for that exact
+          // version and a 404 is a genuine failure.
+          if (!pinned && isPromptVersionNotFound(error)) continue;
+          // Anything else (auth, network, parser) is a real failure — surface now.
           throw error;
         }
       }
-      throw lastError ?? new Error(`No usable version found for prompt "${this.name}"`);
+      // Stepped past minVersion with no usable version. Prefer the informative
+      // missing-variable error from the newest attempt over a trailing 404 from a
+      // pruned older version.
+      throw (
+        firstMissingVarError ?? lastError ?? new Error(`No usable version found for prompt "${this.name}"`)
+      );
     }).withConfig({
       runName: `LangfusePrompt:${this.name}`,
       metadata: { langfusePrompt: () => holder.current },
