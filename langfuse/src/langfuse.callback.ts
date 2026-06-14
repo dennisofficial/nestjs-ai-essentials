@@ -20,6 +20,7 @@ import {
   LangfuseSpanAttributes,
   propagateAttributes,
   startActiveObservation,
+  startObservation,
 } from '@langfuse/tracing';
 
 const LANGSMITH_HIDDEN_TAG = 'langsmith:hidden';
@@ -218,6 +219,40 @@ export class LangfuseCallbackHandler extends BaseCallbackHandler {
           },
         });
       }
+    } catch (e) {
+      this.logger.debug(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  /**
+   * Custom events dispatched via `@langchain/core`'s `dispatchCustomEvent` from inside a runnable
+   * (e.g. a LangGraph node). We render them as point-in-time Langfuse events nested under the
+   * dispatching run's span — `runId` is that run, which `getParentSpanContext` resolves (through any
+   * skipped `Runnable*` wrappers) to its visible observation. This is the only way a node that makes
+   * no LLM call (e.g. a hard-rule gate decision) leaves a mark inside its own span. Best-effort:
+   * telemetry must never break a turn.
+   */
+  async handleCustomEvent(
+    eventName: string,
+    data: any,
+    runId: string,
+    tags?: string[],
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      startObservation(
+        eventName,
+        {
+          input: data,
+          metadata: this.joinTagsAndMetaData(tags, metadata),
+          level: tags?.includes(LANGSMITH_HIDDEN_TAG) ? 'DEBUG' : undefined,
+        },
+        {
+          // @ts-ignore — asType narrows the return; we don't keep the handle (events are point-in-time)
+          asType: 'event',
+          parentSpanContext: this.getParentSpanContext(runId),
+        },
+      );
     } catch (e) {
       this.logger.debug(e instanceof Error ? e.message : String(e));
     }
