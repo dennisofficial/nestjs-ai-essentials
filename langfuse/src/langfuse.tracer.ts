@@ -1,6 +1,7 @@
 import { ROOT_CONTEXT, context, trace } from '@opentelemetry/api';
 import {
   type LangfuseGenerationAttributes,
+  type LangfuseSpanAttributes,
   propagateAttributes,
   startObservation,
 } from '@langfuse/tracing';
@@ -62,15 +63,22 @@ export interface TraceSessionTurnOptions<T = unknown> {
   /** Trace-level tags. */
   tags?: string[];
   /**
-   * Optional callback to extract token/cost usage from the resolved result. Called on success
-   * only; the returned object is forwarded to the Langfuse generation as `usageDetails`,
-   * `costDetails`, and `model`. When absent (or returns `undefined`) usage is not recorded.
+   * Observation kind. Defaults to `'span'` to preserve the original behavior for existing callers
+   * (rs-crm-app, cubix-infra, mls-studio). Pass `'generation'` to record token/cost usage and have
+   * Langfuse render it in its cost/usage views.
+   */
+  asType?: 'span' | 'generation';
+  /**
+   * Optional callback to extract token/cost usage from the resolved result. Only applied when
+   * `asType` is `'generation'`; ignored for spans. Called on success only; the returned object is
+   * forwarded to the Langfuse generation as `usageDetails`, `costDetails`, and `model`. When absent
+   * (or returns `undefined`) usage is not recorded.
    */
   usage?: (result: T) => IGenerationUsage | undefined;
 }
 
 /**
- * Run `fn` inside a single, self-rooted Langfuse **generation** — one standalone trace per call,
+ * Run `fn` inside a single, self-rooted Langfuse observation — one standalone trace per call,
  * grouped by `sessionId`. Captures `fn`'s resolved value as the observation output; records ERROR
  * level + status message on throw. Exactly one observation per call (no child fan-out).
  *
@@ -79,48 +87,80 @@ export interface TraceSessionTurnOptions<T = unknown> {
  * standalone trace per session turn. Callers gate on their own `tracingEnabled`; this helper assumes
  * tracing is on (when no span processor is registered, `startObservation` is itself a cheap no-op).
  *
- * Using `asType:'generation'` (not `'span'`) so Langfuse recognises token/cost fields and renders
- * them in its cost/usage views. On success the `usage` callback is invoked with the result to
- * populate `usageDetails`, `costDetails`, and `model` on the generation.
+ * Observation kind is set by `opts.asType` (default `'span'` for back-compat with existing callers).
+ * With `'generation'`, Langfuse recognises token/cost fields and renders them in its cost/usage
+ * views, and the `usage` callback is invoked on success to populate `usageDetails`, `costDetails`,
+ * and `model`. Those fields are generation-only and are NOT applied to spans.
  */
 export async function traceSessionTurn<T>(
   fn: () => Promise<T>,
   opts: TraceSessionTurnOptions<T>,
 ): Promise<T> {
-  const { name, sessionId, input, metadata, tags, usage } = opts;
-  const observation = context.with(ROOT_CONTEXT, () =>
-    propagateAttributes(
-      {
-        traceName: name,
-        sessionId,
-        tags,
-        metadata: stringifyMetadata(metadata),
-      },
-      () =>
-        startObservation(
-          name,
-          { input, metadata } as LangfuseGenerationAttributes,
-          { asType: 'generation' },
-        ),
+  const { name, sessionId, input, metadata, tags, usage, asType = 'span' } = opts;
+
+  // Self-root: cleared OTel context + trace-level attributes around the observation factory.
+  // Generic so each branch keeps its concrete observation type (LangfuseGeneration / LangfuseSpan).
+  const startSelfRooted = <O>(create: () => O): O =>
+    context.with(ROOT_CONTEXT, () =>
+      propagateAttributes(
+        {
+          traceName: name,
+          sessionId,
+          tags,
+          metadata: stringifyMetadata(metadata),
+        },
+        create,
+      ),
+    );
+
+  const errorAttrs = (e: unknown) => ({
+    level: 'ERROR' as const,
+    statusMessage: e instanceof Error ? (e.stack ?? e.message) : String(e),
+  });
+
+  if (asType === 'generation') {
+    const generation = startSelfRooted(() =>
+      startObservation(
+        name,
+        { input, metadata } as LangfuseGenerationAttributes,
+        { asType: 'generation' },
+      ),
+    );
+    try {
+      const result = await fn();
+      const u = usage?.(result);
+      generation.update({
+        output: result,
+        ...(u?.usageDetails ? { usageDetails: u.usageDetails } : {}),
+        ...(u?.costDetails ? { costDetails: u.costDetails } : {}),
+        ...(u?.model ? { model: u.model } : {}),
+      } as LangfuseGenerationAttributes);
+      return result;
+    } catch (e) {
+      generation.update(errorAttrs(e) as LangfuseGenerationAttributes);
+      throw e;
+    } finally {
+      generation.end();
+    }
+  }
+
+  // Default 'span' — original behavior for existing callers. `usage` is generation-only and is
+  // intentionally NOT applied here, so a span never receives token/cost fields.
+  const span = startSelfRooted(() =>
+    startObservation(
+      name,
+      { input, metadata } as LangfuseSpanAttributes,
+      { asType: 'span' },
     ),
   );
   try {
     const result = await fn();
-    const u = usage?.(result);
-    observation.update({
-      output: result,
-      ...(u?.usageDetails ? { usageDetails: u.usageDetails } : {}),
-      ...(u?.costDetails ? { costDetails: u.costDetails } : {}),
-      ...(u?.model ? { model: u.model } : {}),
-    } as LangfuseGenerationAttributes);
+    span.update({ output: result } as LangfuseSpanAttributes);
     return result;
   } catch (e) {
-    observation.update({
-      level: 'ERROR',
-      statusMessage: e instanceof Error ? (e.stack ?? e.message) : String(e),
-    } as LangfuseGenerationAttributes);
+    span.update(errorAttrs(e) as LangfuseSpanAttributes);
     throw e;
   } finally {
-    observation.end();
+    span.end();
   }
 }
