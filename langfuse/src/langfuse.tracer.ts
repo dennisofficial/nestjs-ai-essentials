@@ -26,7 +26,6 @@ export function captureParentChatTrace(): ChatTracePointer | undefined {
   return ctx ? { traceId: ctx.traceId, spanId: ctx.spanId } : undefined;
 }
 
-/** Trace-level metadata must be `Record<string,string>` — stringify non-string values. */
 function stringifyMetadata(
   metadata?: Record<string, unknown>,
 ): Record<string, string> | undefined {
