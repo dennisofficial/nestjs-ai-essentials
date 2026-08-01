@@ -1,0 +1,144 @@
+name: CI / Publish
+
+# Verification and publishing live in one workflow so the suite runs exactly once per
+# commit. `publish` depends on `verify` via `needs:`, which guarantees they ran on the
+# same commit — a separate workflow chained with `workflow_run` could not promise that.
+#
+# The filename is load-bearing: this repo publishes TWO packages (@dltech/nestjs-langchain
+# and @dltech/nestjs-langfuse) and npm's trusted publisher for BOTH is configured against
+# `publish.yml`, so renaming this file breaks publishing for both until the npm config for
+# each package name is updated to match. The display name above is free to change.
+#
+# Release model: unlike a single-package repo, there is no one `version` in a root
+# package.json to compare against a git tag. Instead `pnpm changeset publish` checks the
+# npm registry per package and publishes only the ones whose local version isn't there yet
+# — so a push that bumped only one package's version releases only that package, and a
+# push that bumped neither is a no-op. `pnpm changeset version` (run locally, see README)
+# is what produces those version bumps from accumulated changesets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-publish-${{ github.ref }}
+  # Superseded PR pushes are worth cancelling; a release in flight is not.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Build, typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      # pnpm's version comes from the `packageManager` field in package.json, so CI can
+      # never drift from local dev. Corepack ships with Node 24; from Node 25 it is
+      # unbundled and this step needs `npm i -g corepack` in front of it.
+      - name: Enable corepack
+        run: corepack enable
+
+      # setup-node's built-in `cache: pnpm` can't be used here — it probes for pnpm before
+      # corepack has installed the shims, so it fails to find a package manager. Caching
+      # the store directly is equivalent.
+      - name: Resolve pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      # `prepare` runs tsup per package, so dist/ and the .d.ts/.d.mts trees are built here.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+  publish:
+    name: Publish changed packages to npm
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Required for npm trusted publishing and provenance, which sign the package with a
+      # verifiable link back to this workflow run.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Resolve pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      # No typecheck here — `needs: verify` already ran it on this exact commit.
+      - run: pnpm install --frozen-lockfile
+
+      # Catches the failure modes a green typecheck cannot: a broken exports map, types
+      # that resolve in this repo but not from an installed tarball, or files missing from
+      # the published artifact. Runs for both packages on every push to main, independent
+      # of which one(s) actually changed version — simpler than diffing per package, and
+      # cheap enough not to matter.
+      - name: Validate publishable artifacts
+        run: |
+          set -eu
+          for pkg in langchain langfuse; do
+            (
+              cd "$pkg"
+              pnpm pack
+              tarball=$(ls ./*.tgz)
+              npx --yes publint@latest "$tarball"
+              npx --yes @arethetypeswrong/cli@latest "$tarball" --ignore-rules no-resolution
+              rm -f "$tarball"
+            )
+          done
+
+      # Authenticated via npm trusted publishing: the `id-token: write` permission above
+      # lets pnpm exchange a GitHub OIDC token for short-lived npm credentials, so there is
+      # no NPM_TOKEN secret to store, rotate, or leak. `changeset publish` itself only
+      # understands --tag/--otp/--no-git-tag (it errors on unknown flags), so provenance is
+      # requested the same way npm's own env-var config works, rather than as a CLI flag —
+      # it's forwarded to the `pnpm publish` invocation changesets spawns per package.
+      # `changeset publish` is a no-op (exit 0, nothing published) when every package's
+      # local version is already on the registry, which is what makes "a version bump in a
+      # package.json" the actual release trigger described above.
+      - name: Publish changed packages
+        run: pnpm changeset publish
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+
+      # Tagging follows a successful publish, so a failed release leaves no tag and the
+      # same version can simply be pushed again. `changeset tag` creates one tag per
+      # published package, `<name>@<version>` (not `v<version>` — that scheme only works
+      # for single-package repos with one version to tag).
+      - name: Tag published packages
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          pnpm changeset tag
+          git push --follow-tags

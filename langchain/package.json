@@ -1,29 +1,61 @@
 {
-  "name": "@workspace/langchain",
-  "version": "1.0.0",
-  "description": "LangChain utilities for NestJS",
+  "name": "@dltech/nestjs-langchain",
+  "version": "1.0.0-next.0",
+  "description": "NestJS-friendly LangChain utilities: decorator-based JSON Schema generation for tool/function calling, a streaming output parser for class-typed tool calls, LLM fallback chains, and an Observable adapter for LangChain streams.",
+  "license": "MIT",
+  "author": "Dennis Lysenko",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dennisofficial/nestjs-ai-essentials.git",
+    "directory": "langchain"
+  },
+  "homepage": "https://github.com/dennisofficial/nestjs-ai-essentials/tree/main/langchain#readme",
+  "bugs": {
+    "url": "https://github.com/dennisofficial/nestjs-ai-essentials/issues"
+  },
+  "keywords": [
+    "langchain",
+    "nestjs",
+    "llm",
+    "tool-calling",
+    "function-calling",
+    "json-schema",
+    "structured-output",
+    "output-parser",
+    "fallback",
+    "zod"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "commonjs",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./src/index.ts",
+        "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       },
       "require": {
-        "types": "./src/index.ts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
     "build": "pnpm tsup",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "prepare": "pnpm build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "fluent-json-schema": "^6.0.0",
@@ -40,7 +72,7 @@
     "zod": ">=3.0.0"
   },
   "devDependencies": {
-    "@langchain/core": "1.1.39",
+    "@langchain/core": "1.1.48",
     "@nestjs/common": "11.1.17",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.4",
@@ -51,7 +83,7 @@
     "reflect-metadata": ">=0.1.0",
     "rxjs": ">=7.0.0",
     "tsup": "^8.5.0",
-    "typescript": "^6.0.3",
+    "typescript": "6.0.3",
     "zod": "^3.25.76"
   }
 }

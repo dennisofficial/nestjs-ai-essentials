@@ -1,0 +1,59 @@
+name: Changeset check
+
+# Optional gate for when work happens on a branch instead of straight on main. A `feat/*`
+# PR must declare its intended version bump before merging; `changeset status` exits
+# non-zero when a publishable package changed with no changeset describing it.
+#
+# Branches that are not `feat/*` are ignored entirely, so committing directly to main —
+# the normal flow here — is unaffected.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: changeset-check-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  changeset:
+    name: Require a changeset
+    if: startsWith(github.head_ref, 'feat/') && !contains(github.event.pull_request.labels.*.name, 'skip-changeset')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `changeset status --since` diffs against main, so the comparison needs real
+          # history rather than a depth-1 clone.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Resolve pnpm store
+        id: pnpm-store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      # Reading changeset state needs no build, and skipping `prepare` keeps this gate
+      # fast enough to run on every push to the PR.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check for a changeset
+        run: |
+          if ! pnpm changeset status --since=origin/main; then
+            echo "::error::This feat/* branch changes a published package but has no changeset."
+            echo "::error::Run 'pnpm changeset' and commit the generated .changeset/*.md file."
+            echo "::error::If the change genuinely needs no release, add the 'skip-changeset' label."
+            exit 1
+          fi

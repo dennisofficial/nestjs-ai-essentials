@@ -7,6 +7,7 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'ut
 
 const external = [
   ...Object.keys(packageJson.peerDependencies || {}),
+  ...Object.keys(packageJson.dependencies || {}),
   ...Object.keys(packageJson.devDependencies || {}).filter(
     (dep) => !dep.startsWith('@types/') && !['typescript', 'tsup'].includes(dep),
   ),
@@ -15,7 +16,7 @@ const external = [
 export default defineConfig({
   entry: ['src/index.ts'],
   format: ['cjs', 'esm'],
-  dts: false,
+  dts: { compilerOptions: { incremental: false, ignoreDeprecations: '6.0' } },
   splitting: true,
   sourcemap: true,
   clean: true,

@@ -1,29 +1,60 @@
 {
-  "name": "@workspace/langfuse",
-  "version": "1.0.0",
-  "description": "Custom Langfuse LangChain callback handler (filters LangChain run noise) for the Langfuse v5 OpenTelemetry SDK",
+  "name": "@dltech/nestjs-langfuse",
+  "version": "1.0.0-next.0",
+  "description": "NestJS/LangChain integration for the Langfuse v5 OpenTelemetry SDK: a noise-filtered LangChain callback handler, a version-stepped Langfuse-managed prompt runnable, and helpers for tracing detached session turns.",
+  "license": "MIT",
+  "author": "Dennis Lysenko",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dennisofficial/nestjs-ai-essentials.git",
+    "directory": "langfuse"
+  },
+  "homepage": "https://github.com/dennisofficial/nestjs-ai-essentials/tree/main/langfuse#readme",
+  "bugs": {
+    "url": "https://github.com/dennisofficial/nestjs-ai-essentials/issues"
+  },
+  "keywords": [
+    "langfuse",
+    "langchain",
+    "nestjs",
+    "opentelemetry",
+    "observability",
+    "tracing",
+    "llm",
+    "callback-handler",
+    "prompt-management"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "commonjs",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./src/index.ts",
+        "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       },
       "require": {
-        "types": "./src/index.ts",
+        "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
     "build": "pnpm tsup",
-    "dev": "nodemon"
+    "dev": "nodemon",
+    "prepare": "pnpm build",
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "@langchain/core": ">=1.0.0",
@@ -33,7 +64,7 @@
     "@opentelemetry/api": ">=1.0.0"
   },
   "devDependencies": {
-    "@langchain/core": "1.1.39",
+    "@langchain/core": "1.1.48",
     "@langfuse/client": "^5.1.0",
     "@langfuse/core": "^5.1.0",
     "@langfuse/tracing": "^5.1.0",
@@ -42,6 +73,6 @@
     "prettier": "^3.8.2",
     "prettier-plugin-organize-imports": "^4.3.0",
     "tsup": "^8.5.0",
-    "typescript": "^6.0.3"
+    "typescript": "6.0.3"
   }
 }
