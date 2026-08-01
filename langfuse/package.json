@@ -1,6 +1,6 @@
 {
   "name": "@dltech/nestjs-langfuse",
-  "version": "1.0.0-next.0",
+  "version": "1.0.0",
   "description": "NestJS/LangChain integration for the Langfuse v5 OpenTelemetry SDK: a noise-filtered LangChain callback handler, a version-stepped Langfuse-managed prompt runnable, and helpers for tracing detached session turns.",
   "license": "MIT",
   "author": "Dennis Lysenko",
