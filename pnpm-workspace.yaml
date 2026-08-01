@@ -2,4 +2,5 @@ packages:
   - langchain
   - langfuse
 allowBuilds:
+  '@swc/core': true
   esbuild: true

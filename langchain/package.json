@@ -1,6 +1,6 @@
 {
   "name": "@dltech/nestjs-langchain",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NestJS-friendly LangChain utilities: decorator-based JSON Schema generation for tool/function calling, a streaming output parser for class-typed tool calls, LLM fallback chains, and an Observable adapter for LangChain streams.",
   "license": "MIT",
   "author": "Dennis Lysenko",
@@ -74,6 +74,7 @@
   "devDependencies": {
     "@langchain/core": "1.1.48",
     "@nestjs/common": "11.1.17",
+    "@swc/core": "^1.15.47",
     "class-transformer": "0.5.1",
     "class-validator": "0.14.4",
     "langchain": "1.2.35",

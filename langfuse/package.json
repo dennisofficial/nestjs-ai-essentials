@@ -1,6 +1,6 @@
 {
   "name": "@dltech/nestjs-langfuse",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NestJS/LangChain integration for the Langfuse v5 OpenTelemetry SDK: a noise-filtered LangChain callback handler, a version-stepped Langfuse-managed prompt runnable, and helpers for tracing detached session turns.",
   "license": "MIT",
   "author": "Dennis Lysenko",
@@ -69,6 +69,7 @@
     "@langfuse/core": "^5.1.0",
     "@langfuse/tracing": "^5.1.0",
     "@opentelemetry/api": "^1.9.0",
+    "@swc/core": "^1.15.47",
     "nodemon": "^3.1.7",
     "prettier": "^3.8.2",
     "prettier-plugin-organize-imports": "^4.3.0",
