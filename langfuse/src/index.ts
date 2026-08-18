@@ -8,6 +8,11 @@ export * from './langfuse.tracer';
 // distinct APIs that happened to share a filename in the two codebases.
 export * from './langfuse.run-tracer';
 export * from './langfuse.interceptor';
+export {
+  buildObservationTraceMetadata,
+  buildPropagatedTraceMetadata,
+  sanitizeHeadersForObservation,
+} from './langfuse.request-metadata';
 export { registerIoSerializer } from './langfuse.serializer';
 export { safeModelParams } from './langfuse.utils';
 export type { LangfuseObservation, LangfuseSpan } from '@langfuse/tracing';

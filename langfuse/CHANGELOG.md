@@ -1,5 +1,16 @@
 # @dltech/nestjs-langfuse
 
+## 1.2.0
+
+### Minor Changes
+
+- Export the request-metadata helpers: `buildObservationTraceMetadata`,
+  `buildPropagatedTraceMetadata` and `sanitizeHeadersForObservation`.
+
+  They decide what of an incoming request reaches a trace — including which headers are redacted —
+  so they are worth asserting on directly. Leaving them unexported forced a consumer's test to reach
+  into `src/` through a relative deep import, which broke the moment the package moved.
+
 ## 1.1.0
 
 ### Minor Changes
