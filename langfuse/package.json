@@ -1,6 +1,6 @@
 {
   "name": "@dltech/nestjs-langfuse",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "NestJS/LangChain integration for the Langfuse v5 OpenTelemetry SDK: a noise-filtered LangChain callback handler, a version-stepped Langfuse-managed prompt runnable, and helpers for tracing detached session turns.",
   "license": "MIT",
   "author": "Dennis Lysenko",
@@ -61,18 +61,32 @@
     "@langfuse/client": ">=5.0.0",
     "@langfuse/core": ">=5.0.0",
     "@langfuse/tracing": ">=5.0.0",
-    "@opentelemetry/api": ">=1.0.0"
+    "@nestjs/common": ">=11.0.0",
+    "@nestjs/core": ">=11.0.0",
+    "@opentelemetry/api": ">=1.0.0",
+    "class-validator": ">=0.14.0",
+    "express": ">=4.0.0",
+    "reflect-metadata": ">=0.1.0",
+    "rxjs": ">=7.0.0"
   },
   "devDependencies": {
     "@langchain/core": "1.1.48",
     "@langfuse/client": "^5.1.0",
     "@langfuse/core": "^5.1.0",
     "@langfuse/tracing": "^5.1.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
     "@opentelemetry/api": "^1.9.0",
     "@swc/core": "^1.15.47",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.19.15",
+    "class-validator": "^0.14.4",
+    "express": "^5.0.0",
     "nodemon": "^3.1.7",
     "prettier": "^3.8.2",
     "prettier-plugin-organize-imports": "^4.3.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "tsup": "^8.5.0",
     "typescript": "6.0.3"
   }

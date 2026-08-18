@@ -1,5 +1,30 @@
 # @dltech/nestjs-langfuse
 
+## 1.1.0
+
+### Minor Changes
+
+- Add `RunTracer`, the NestJS request-tracing layer, and the serializer/parser/media helpers.
+
+  A consumer had grown these independently against the same Langfuse SDK, so the two codebases
+  shared a package name and almost no API. This brings that work in:
+
+  - **`RunTracer`** — `trace` / `traceEvent` / `traceAsync` / `from`, wrapping an arbitrary async
+    span across all nine observation types. Distinct from `traceSessionTurn`, which handles a
+    detached session turn; both are exported. Lives in `langfuse.run-tracer.ts` because
+    `langfuse.tracer.ts` is already the session-turn module.
+  - **`LangfuseInterceptor` + `UseTracer` / `GetTracer`** — request-scoped tracing for NestJS
+    controllers, with a Proxy guard that blocks a premature `.end()`.
+  - **`registerIoSerializer`** — hook for redacting or reshaping traced I/O.
+  - **`safeModelParams`**, plus internal media and prompt-value parsing helpers.
+
+  **This adds a NestJS peer surface the package did not previously have**: `@nestjs/common`,
+  `@nestjs/core`, `express`, `rxjs`, `reflect-metadata` and `class-validator` are now peers. They
+  are only required by the interceptor; the tracing and callback APIs remain framework-agnostic.
+
+  Verified against a NestJS/Mongoose consumer with 59 importing files: typecheck clean, build
+  clean, 839 tests passing.
+
 ## 1.0.1
 
 ### Patch Changes
